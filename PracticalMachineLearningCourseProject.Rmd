@@ -1,0 +1,56 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Rishabh Iyer"
+date: "October 5, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+This project was inspired by a paper by [Velloso et al](http://web.archive.org/web/20170809020213/http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf).  In the paper's study, the researchers affixed sensors to the belt, arm, and forearm of a number of subjects, as well as to a dumbell.  Each subject was then told to perform a bicep curl in one of 5 manners.  One of those manners was the correct way to perform a bicep curl, while the 4 other manners each involved a common mistake.  Data from the sensors was collected.
+
+In this project, we take the data from this study and fit a model to it.  We then test this model to estimate how accurately it can identify the manner in which a bicep curl is performed based on input data.  Finally, we submitted 20 predictions via a Coursera quiz as another test of our model.
+
+## Getting and Cleaning Data
+
+First, we download and read the data. This data had 160 variables. We got rid of the variables that had NA or empty string values, which brought the number of variables down to 60.  The first seven variables, which were administrative variables such as count index, time stamps, and subject name, are likely not to have predictive value, so we got rid of them too. What was left was a data frame of 52 predictors and the variable to be predicted, for a total of 53 variables.
+
+We downloaded the test data of 20 observations and put it through similar cleaning.
+```{r, include = FALSE}
+library(caret)
+```
+```{r}
+library(caret)
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "wlift.csv")
+wlift <- read.csv("wlift.csv")
+## Get rids of suspect columns
+wlift <- wlift[, colSums(is.na(wlift))==0 & colSums(wlift=="")==0]
+wlift <- wlift[,-c(1:7)]
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "wliftTest.csv")
+wliftTest <- read.csv("wliftTest.csv")
+wliftTest <- wliftTest[, colSums(is.na(wliftTest))==0 & colSums(wliftTest=="") == 0]
+wliftTest <- wliftTest[,-c(1:7)]
+
+```
+
+## Model Fit and Testing
+
+To build our model, first we set the seed so these results are reproducible. Then, we partitioned the data into training and test sets.  This was for cross-validation, so we could build our model on the training set and test it on the test set for an estimate of out of sample error.
+
+We built our model using the random forest method.  This method is good for accuracy, but is computationally expensive.  It took us roughly 10 hours of computing time to build this model.  However, it was worth the wait. When we tested the model on the test set, we got an accuracy of 99.39%.  Accordingly, we estimate the out of sample error rate of our model to be 0.51%.
+
+Finally, we used our model to predict the outcomes for the 20 observations in the test set provided through Coursera.  They were all predicted correctly.
+```{r}
+set.seed(13)
+inTrain <- createDataPartition(y = wlift$classe, p = .7, list = FALSE)
+training <- wlift[inTrain,]
+testing <- wlift[-inTrain,]
+RFfit <- train(classe~., data = training, method = "rf", prox = TRUE)
+pred <- predict(RFfit, testing);
+confusionMatrix(pred, testing$classe)
+guess <- predict(RFfit, wliftTest)
+guess
+```
